@@ -37,7 +37,7 @@ def ask_chemistry_questions(category, frame):
         ],
         "liquids": [
             "Water is known as Oxidane in IUPAC naming. Is water a liquid at RT? (yes/no)",
-            "Is ethanol a liquid? (yes/no)",
+            "Is Sodium a liquid? (yes/no)",
             "Mercury shines at RT. Is mercury a liquid? (yes/no)"
         ]
     }
