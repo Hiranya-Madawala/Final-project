@@ -1,11 +1,8 @@
 import tkinter as tk
 from tkinter import messagebox, simpledialog, LabelFrame
 import json
+import os
 
-# Validation Functions
-# --------------------
-
-# Validate the name input
 def validate_name(name):
     if not name.isalpha():
         messagebox.showerror("Invalid Name", "Name must contain only alphabetic characters.")
@@ -15,77 +12,112 @@ def validate_name(name):
         return False
     return True
 
-# Validate the category input
 def validate_category(category):
     if category.lower() not in ["metals", "gases", "liquids"]:
         messagebox.showerror("Invalid Category", "Please choose a valid category: metals, gases, or liquids.")
         return False
     return True
 
-# Validate the answer input
 def validate_answer(answer):
     if answer.lower() not in ["yes", "no"]:
         messagebox.showerror("Invalid Answer", "Please answer with 'yes' or 'no'.")
         return False
     return True
-
-# Quiz Functions
-# --------------
-
-# Ask chemistry questions based on the chosen category
 def ask_chemistry_questions(category, frame):
     questions = {
         "metals": [
-            "Is gold a metal? (yes/no)",
-            "Is iron a metal? (yes/no)",
+            "Is gold a metal and states as 'Au' in IUPAC naming? (yes/no)",
+            "Is Argon a metal? (yes/no)",
             "Is mercury a metal? (yes/no)"
         ],
         "gases": [
             "Is oxygen a gas? (yes/no)",
-            "Is nitrogen a gas? (yes/no)",
-            "Is carbon dioxide a gas? (yes/no)"
+            "Strontium gives an Orange color in the flame test. Is it a gas? (yes/no)",
+            "Carbon monoxide is toxic and binds with blood irreversibly. Is carbon monoxide a gas? (yes/no)"
         ],
         "liquids": [
-            "Is water a liquid? (yes/no)",
+            "Water is known as Oxidane in IUPAC naming. Is water a liquid at RT? (yes/no)",
             "Is ethanol a liquid? (yes/no)",
-            "Is mercury a liquid? (yes/no)"
+            "Mercury shines at RT. Is mercury a liquid? (yes/no)"
         ]
     }
-    correct_answers = ['yes', 'yes', 'yes']
+    correct_answers = ['yes', 'no', 'yes']
     score = 0
+    answers = []
 
     for i, question in enumerate(questions[category]):
         while True:
             answer = simpledialog.askstring("Question", f"Question {i+1}: {question}", parent=frame)
             if validate_answer(answer):
                 break
+        answers.append(answer.lower())
         if answer.lower() == correct_answers[i]:
             messagebox.showinfo("Correct!", "That's the right answer!", parent=frame)
             score += 1
         else:
             messagebox.showerror("Wrong!", f"The correct answer is '{correct_answers[i]}'.", parent=frame)
-    return score
+    return score, answers
+def draw_chart(scores, names):
+    try:
+        import matplotlib.pyplot as plt
+        plt.figure(figsize=(10, 6))
+        plt.bar(names, scores, color='green')
+        plt.xlabel("Participant Names")
+        plt.ylabel("Scores")
+        plt.title("Chemistry Quiz Results")
+        plt.xticks(rotation=45, ha='right')
+        plt.tight_layout()
+        plt.show()
+    except ImportError:
+        messagebox.showerror("Error", "matplotlib is not installed. Please install it to view the chart.")
 
-# Results Display Functions
-# -------------------------
+def create_frame(scores, names):
+    draw_chart(scores, names)
 
-# Function to draw the bar chart
-def draw_chart(canvas, scores, names):
-    # Draw the bar chart with proper labels
-    bar_width = 50
-    spacing = 20  # Increased spacing for gap before the first bar
-    max_score = max(scores) if scores else 0  # Ensure there's a score to avoid division by zero
-    y_scale_interval = max(max_score // 10, 1)  # Avoid zero as interval
+if __name__ == "__main__":
+    app_window = tk.Tk()
+    app_window.title("Chemistry Quiz")
 
-    # Starting x position for the first bar
-    start_x = 70
+    if os.path.exists('quiz_results.json'):
+        with open('quiz_results.json', 'r') as json_file:
+            participants = json.load(json_file)
+            # Ensure participants is a list
+            if not isinstance(participants, list):
+                participants = []
+    else:
+        participants = []
 
-    for i, score in enumerate(scores):
-        canvas.create_rectangle(start_x + i * (bar_width + spacing), 400, start_x + (i + 1) * (bar_width + spacing) - spacing,
-                                400 - (score * (400 / (max_score + 1))), fill="skyblue")
-        canvas.create_text(start_x + i * (bar_width + spacing) + (bar_width / 2), 410, text=names[i], anchor=tk.N)
+    # Main quiz loop
+    while True:
+        # Ask for user's name and validate it
+        while True:
+            user_name = simpledialog.askstring("Name", "Please enter your name:", parent=app_window)
+            if validate_name(user_name):
+                break
 
-    # Add scale markings to the y-axis
-    for i in range(0, max_score + 1, y_scale_interval):
-        canvas.create_line(start_x - 20, 400 - (i * (400 / (max_score + 1))), start_x - 10, 400 - (i * (400 / (max_score + 1))), fill="black")
-        canvas.create_text(start_x - 40, 400 - (i * (400 / (max_score + 1))), text=str(i), anchor=tk.E)
+        # Ask for category and validate it
+        while True:
+            category = simpledialog.askstring("Category", "Choose a category: metals, gases, or liquids", parent=app_window)
+            if validate_category(category):
+                break
+        score, user_answers = ask_chemistry_questions(category, app_window)
+
+        participants.append({
+            "name": user_name,
+            "category": category,
+            "score": score,
+            "answers": user_answers
+        })
+
+        # Ask if another participant wants to take the quiz
+        another_participant = messagebox.askyesno("Another Participant", "Do you want another participant to take the quiz?")
+        if not another_participant:
+            break
+
+    participant_names = [participant["name"] for participant in participants]
+    participant_scores = [participant["score"] for participant in participants]
+    create_frame(participant_scores, participant_names)
+    with open('quiz_results.json', 'w') as json_file:
+        json.dump(participants, json_file, indent=4)
+
+    app_window.mainloop()
